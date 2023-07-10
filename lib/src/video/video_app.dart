@@ -27,6 +27,7 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _videoController;
+  late Future<void> _initializeVideoPlayerFuture;
   bool _isPlaying = false;
   bool _isInitialized = false;
   Duration _videoDuration = Duration.zero;
@@ -46,19 +47,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _initializeVideo() {
     _videoController =
-        VideoPlayerController.networkUrl(Uri.parse(widget.video.url))
-          ..initialize().then((_) {
-            setState(() {
-              _isInitialized = true;
-              _videoDuration = _videoController.value.duration;
-            });
-          });
+        VideoPlayerController.networkUrl(Uri.parse(widget.video.url));
+
+    _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
+      setState(() {
+        _isInitialized = true;
+        _videoDuration = _videoController.value.duration;
+      });
+    });
 
     _videoController.addListener(() {
       setState(() {
         _currentPosition = _videoController.value.position;
       });
     });
+    _videoController.setLooping(true);
   }
 
   void _toggleVideoPlayback() {
@@ -115,37 +118,56 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       appBar: AppBar(
         title: Text(widget.video.description),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _isInitialized
-                  ? VideoPlayer(_videoController)
-                  : const CircularProgressIndicator(),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                  onPressed: _toggleVideoPlayback,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.replay_10),
-                  onPressed: _skipBackward,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.forward_10),
-                  onPressed: _skipForward,
-                ),
-              ],
-            ),
-            _buildProgressBar(),
-            _buildCountdown(),
-          ],
-        ),
+      body: FutureBuilder(
+        future: _initializeVideoPlayerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            // If the VideoPlayerController has finished initialization, use
+            // the data it provides to limit the aspect ratio of the video.
+            return videoView();
+          } else {
+            // If the VideoPlayerController is still initializing, show a
+            // loading spinner.
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  SingleChildScrollView videoView() {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: _isInitialized
+                ? VideoPlayer(_videoController)
+                : const CircularProgressIndicator(),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                onPressed: _toggleVideoPlayback,
+              ),
+              IconButton(
+                icon: const Icon(Icons.replay_10),
+                onPressed: _skipBackward,
+              ),
+              IconButton(
+                icon: const Icon(Icons.forward_10),
+                onPressed: _skipForward,
+              ),
+            ],
+          ),
+          _buildProgressBar(),
+          _buildCountdown(),
+        ],
       ),
     );
   }
