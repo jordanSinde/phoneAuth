@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:phone_auth/src/video/miles.dart';
+import 'package:phone_auth/src/video/video_app.dart';
 
 import '../../login/auth_state_provider.dart';
 
@@ -25,7 +25,7 @@ class MainView extends ConsumerWidget {
         ],
       ),
       body: const SafeArea(
-        child: VideoApp(),
+        child: VideoListScreen(),
       ),
     );
   }
