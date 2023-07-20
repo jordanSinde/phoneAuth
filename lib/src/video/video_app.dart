@@ -3,18 +3,29 @@ import 'package:phone_auth/src/video/get_download_url.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'type_def.dart';
+
 class LessonPart {
-  final String id;
+  final PartLessonId partLessonId;
   final String storagePath;
   final String description;
   final String image;
 
   LessonPart({
-    required this.id,
+    required this.partLessonId,
     required this.storagePath,
     required this.description,
     required this.image,
   });
+
+  factory LessonPart.fromMap(Map<String, dynamic> map) {
+    return LessonPart(
+      partLessonId: map['partLessonId'] ?? "",
+      storagePath: map['storagePath'] ?? "",
+      description: map['description'] ?? "",
+      image: map['image'] ?? "",
+    );
+  }
 }
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -107,10 +118,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Widget _buildCountdown() {
+    String formattedCurrentPosition = _formatDuration(_currentPosition);
+    String formattedVideoDuration = _formatDuration(_videoDuration);
+
     return Text(
-      '${_currentPosition.inSeconds} / ${_videoDuration.inSeconds}',
+      '$formattedCurrentPosition / $formattedVideoDuration',
       style: const TextStyle(fontSize: 16),
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) {
+      if (n >= 10) return "$n";
+      return "0$n";
+    }
+
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    String twoDigitHours = twoDigits(duration.inHours);
+
+    return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
   }
 
   @override
@@ -229,12 +256,7 @@ class _LessonViewState extends State<LessonView> {
         } else {
           final videos = snapshot.data!.docs.map((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            return LessonPart(
-              id: doc.id,
-              storagePath: data['storagePath'],
-              description: data['description'],
-              image: data['image'],
-            );
+            return LessonPart.fromMap(data);
           }).toList();
 
           return ListView.builder(
