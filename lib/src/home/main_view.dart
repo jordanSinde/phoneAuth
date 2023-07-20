@@ -3,7 +3,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:phone_auth/src/quiz/quiz_screen.dart';
 
 import '../../login/auth_state_provider.dart';
-import '../quiz/sample_question.dart';
 
 class MainView extends ConsumerWidget {
   const MainView({super.key});
@@ -25,8 +24,8 @@ class MainView extends ConsumerWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: QuizScreen(questions: sampleQuestions),
+      body: const SafeArea(
+        child: QuizScreen(),
       ),
     );
   }

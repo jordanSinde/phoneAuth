@@ -6,18 +6,21 @@ List<Question> sampleQuestions = [
     options: ['London', 'Paris', 'Berlin', 'Madrid'],
     correctOptionIndex: 1,
     timerDuration: 20,
+    questionId: '',
   ),
   Question(
     questionText: 'What is 2 + 2?',
     options: ['3', '4', '5', '6'],
     correctOptionIndex: 1,
     timerDuration: 10,
+    questionId: '',
   ),
   Question(
     questionText: 'What is 2 + 9?',
     options: ['3', '4', '5', '11'],
     correctOptionIndex: 3,
     timerDuration: 10,
+    questionId: '',
   ),
   // Add more questions here
 ];

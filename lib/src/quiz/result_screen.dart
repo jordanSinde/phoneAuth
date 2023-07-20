@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import 'quiz_screen.dart';
-import 'sample_question.dart';
 
 class ResultScreen extends StatelessWidget {
   final int score;
@@ -49,8 +48,7 @@ class ResultScreen extends StatelessWidget {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                    builder: (BuildContext context) =>
-                        QuizScreen(questions: sampleQuestions),
+                    builder: (BuildContext context) => const QuizScreen(),
                   ),
                   (route) =>
                       false, // Supprime toutes les autres routes de la stack de navigation
