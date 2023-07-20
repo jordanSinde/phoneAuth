@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:phone_auth/src/video/get_download_url.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Video {
+class LessonPart {
   final String id;
-  final String url;
+  final String storagePath;
   final String description;
   final String image;
 
-  Video({
+  LessonPart({
     required this.id,
-    required this.url,
+    required this.storagePath,
     required this.description,
     required this.image,
   });
 }
 
 class VideoPlayerScreen extends StatefulWidget {
-  final Video video;
+  final LessonPart video;
 
   const VideoPlayerScreen({super.key, required this.video});
 
@@ -47,7 +48,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _initializeVideo() {
     _videoController =
-        VideoPlayerController.networkUrl(Uri.parse(widget.video.url));
+        VideoPlayerController.networkUrl(Uri.parse(widget.video.storagePath));
 
     _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
       setState(() {
@@ -178,53 +179,85 @@ class VideoListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Video List'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('videos').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          } else {
-            final videos = snapshot.data!.docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return Video(
-                id: doc.id,
-                url: data['url'],
-                description: data['description'],
-                image: data['image'],
-              );
-            }).toList();
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Video List'),
+            bottom: const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.video_collection)),
+                Tab(icon: Icon(Icons.download)),
+              ],
+            ),
+          ),
+          body: const TabBarView(
+            children: [
+              LessonView(),
+              UploadDownloadFileInStorage(),
+            ],
+          )),
+    );
+  }
+}
 
-            return ListView.builder(
-              itemCount: videos.length,
-              itemBuilder: (context, index) {
-                final video = videos[index];
-                return ListTile(
-                  title: Text(video.description),
-                  trailing: Image.network(video.image),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VideoPlayerScreen(video: video),
-                      ),
-                    );
-                  },
-                );
-              },
+class LessonView extends StatefulWidget {
+  const LessonView({
+    super.key,
+  });
+
+  @override
+  State<LessonView> createState() => _LessonViewState();
+}
+
+class _LessonViewState extends State<LessonView> {
+  final Stream<QuerySnapshot> _lessonPartStream =
+      FirebaseFirestore.instance.collection('videos').snapshots();
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _lessonPartStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        } else if (snapshot.hasError) {
+          return Center(
+            child: Text('Error: ${snapshot.error}'),
+          );
+        } else {
+          final videos = snapshot.data!.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return LessonPart(
+              id: doc.id,
+              storagePath: data['storagePath'],
+              description: data['description'],
+              image: data['image'],
             );
-          }
-        },
-      ),
+          }).toList();
+
+          return ListView.builder(
+            itemCount: videos.length,
+            itemBuilder: (context, index) {
+              final video = videos[index];
+              return ListTile(
+                title: Text(video.description),
+                trailing: Image.network(video.image),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VideoPlayerScreen(video: video),
+                      fullscreenDialog: true,
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        }
+      },
     );
   }
 }
