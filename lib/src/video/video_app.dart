@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class Video {
   final String id;
-  final String url;
+  final String storagePath;
   final String description;
   final String image;
 
   Video({
     required this.id,
-    required this.url,
+    required this.storagePath,
     required this.description,
     required this.image,
   });
@@ -29,9 +30,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _videoController;
   late Future<void> _initializeVideoPlayerFuture;
   bool _isPlaying = false;
-  bool _isInitialized = false;
-  Duration _videoDuration = Duration.zero;
-  Duration _currentPosition = Duration.zero;
 
   @override
   void initState() {
@@ -45,22 +43,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.dispose();
   }
 
-  void _initializeVideo() {
-    _videoController =
-        VideoPlayerController.networkUrl(Uri.parse(widget.video.url));
+  void _initializeVideo() async {
+    final storage = FirebaseStorage.instance.ref();
+    final videoUrl =
+        await storage.child(widget.video.storagePath).getDownloadURL();
+
+    _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
 
     _initializeVideoPlayerFuture = _videoController.initialize().then((_) {
-      setState(() {
-        _isInitialized = true;
-        _videoDuration = _videoController.value.duration;
-      });
+      setState(() {});
     });
 
     _videoController.addListener(() {
-      setState(() {
-        _currentPosition = _videoController.value.position;
-      });
+      setState(() {});
     });
+
     _videoController.setLooping(true);
   }
 
@@ -75,40 +72,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
   }
 
-  void _skipForward() {
-    Duration newPosition =
-        _videoController.value.position + const Duration(seconds: 10);
-    if (newPosition <= _videoDuration) {
-      _videoController.seekTo(newPosition);
-    }
-  }
-
-  void _skipBackward() {
-    Duration newPosition =
-        _videoController.value.position - const Duration(seconds: 10);
-    if (newPosition >= Duration.zero) {
-      _videoController.seekTo(newPosition);
-    }
-  }
-
-  Widget _buildProgressBar() {
-    double progress = _videoDuration != Duration.zero
-        ? _currentPosition.inMilliseconds / _videoDuration.inMilliseconds
-        : 0.0;
-    return SizedBox(
-      height: 4,
-      child: LinearProgressIndicator(
-        value: progress.isFinite ? progress : 0.0,
-        backgroundColor: Colors.grey[300],
-        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-      ),
+  Widget _buildVideoPlayer() {
+    return AspectRatio(
+      aspectRatio: _videoController.value.aspectRatio,
+      child: VideoPlayer(_videoController),
     );
   }
 
-  Widget _buildCountdown() {
-    return Text(
-      '${_currentPosition.inSeconds} / ${_videoDuration.inSeconds}',
-      style: const TextStyle(fontSize: 16),
+  Widget _buildPlaybackControls() {
+    return Column(
+      children: [
+        IconButton(
+          icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+          onPressed: _toggleVideoPlayback,
+        ),
+      ],
     );
   }
 
@@ -121,53 +99,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       body: FutureBuilder(
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            // If the VideoPlayerController has finished initialization, use
-            // the data it provides to limit the aspect ratio of the video.
-            return videoView();
-          } else {
-            // If the VideoPlayerController is still initializing, show a
-            // loading spinner.
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(),
             );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          } else {
+            return Column(
+              children: [
+                _buildVideoPlayer(),
+                _buildPlaybackControls(),
+              ],
+            );
           }
         },
-      ),
-    );
-  }
-
-  SingleChildScrollView videoView() {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: _isInitialized
-                ? VideoPlayer(_videoController)
-                : const CircularProgressIndicator(),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                onPressed: _toggleVideoPlayback,
-              ),
-              IconButton(
-                icon: const Icon(Icons.replay_10),
-                onPressed: _skipBackward,
-              ),
-              IconButton(
-                icon: const Icon(Icons.forward_10),
-                onPressed: _skipForward,
-              ),
-            ],
-          ),
-          _buildProgressBar(),
-          _buildCountdown(),
-        ],
       ),
     );
   }
@@ -198,7 +146,7 @@ class VideoListScreen extends StatelessWidget {
               final data = doc.data() as Map<String, dynamic>;
               return Video(
                 id: doc.id,
-                url: data['url'],
+                storagePath: data['storagePath'],
                 description: data['description'],
                 image: data['image'],
               );
